@@ -71,3 +71,19 @@ class ServicioReconocimientoTest(TestCase):
     _, jpg = cv2.imencode('.jpg', np.zeros((480, 640, 3), np.uint8))
     data_url = 'data:image/jpeg;base64,' + base64.b64encode(jpg.tobytes()).decode()
     self.assertEqual(servicios.reconocer(data_url), [])
+
+
+class ComandosTest(TestCase):
+
+  def test_crear_grupos(self):
+    from io import StringIO
+    from django.contrib.auth.models import Group
+    from django.core.management import call_command
+    call_command('crear_grupos', stdout=StringIO())
+    call_command('crear_grupos', stdout=StringIO())  # se puede correr dos veces
+    vigilante = Group.objects.get(name='Vigilante')
+    self.assertEqual(
+      set(vigilante.permissions.values_list('codename', flat=True)),
+      {'view_persona', 'view_registroacceso', 'add_registroacceso'},
+    )
+    self.assertEqual(Group.objects.get(name='Administrador').permissions.count(), 12)
