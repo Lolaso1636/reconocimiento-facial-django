@@ -68,6 +68,9 @@
             <ul id="historial-sesion" class="space-y-2 text-sm">
                 <li class="text-grafito-400">Sin registros</li>
             </ul>
+            {% if perms.reconocimiento.view_registroacceso %}
+                <a href="{% url 'historial' %}" class="inline-block mt-4 text-sm font-semibold text-ucc-700 hover:underline">Ver historial completo</a>
+            {% endif %}
         </div>
     </aside>
 </div>

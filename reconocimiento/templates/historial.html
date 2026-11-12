@@ -1,0 +1,106 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Historial{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-grafito-900">Historial de accesos</h1>
+    <p class="text-sm text-grafito-500 mt-1">Cada persona se registra como máximo una vez por minuto mientras esté frente a la cámara.</p>
+</div>
+
+{# FILTROS (por GET, como la búsqueda de personas) #}
+<form method="get" action="{% url 'historial' %}" class="bg-white rounded-lg border border-grafito-200 p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+    <div>
+        <label for="desde" class="block text-xs font-semibold uppercase tracking-wide text-grafito-500 mb-1">Desde</label>
+        <input type="date" id="desde" name="desde" value="{{ desde }}"
+            class="w-full px-3 py-2 border border-grafito-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ucc-500">
+    </div>
+    <div>
+        <label for="hasta" class="block text-xs font-semibold uppercase tracking-wide text-grafito-500 mb-1">Hasta</label>
+        <input type="date" id="hasta" name="hasta" value="{{ hasta }}"
+            class="w-full px-3 py-2 border border-grafito-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ucc-500">
+    </div>
+    <div>
+        <label for="persona" class="block text-xs font-semibold uppercase tracking-wide text-grafito-500 mb-1">Persona</label>
+        <select id="persona" name="persona"
+            class="w-full px-3 py-2 border border-grafito-200 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ucc-500">
+            <option value="">Todas</option>
+            {% for p in personas %}
+                <option value="{{ p.id }}" {% if persona_id == p.id|stringformat:"d" %}selected{% endif %}>{{ p.nombre_completo }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label for="estado" class="block text-xs font-semibold uppercase tracking-wide text-grafito-500 mb-1">Estado</label>
+        <select id="estado" name="estado"
+            class="w-full px-3 py-2 border border-grafito-200 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ucc-500">
+            <option value="">Todos</option>
+            <option value="reconocido" {% if estado == 'reconocido' %}selected{% endif %}>Reconocidos</option>
+            <option value="desconocido" {% if estado == 'desconocido' %}selected{% endif %}>Desconocidos</option>
+        </select>
+    </div>
+    <div class="flex gap-2">
+        <button type="submit" class="flex-1 px-4 py-2 bg-ucc-700 hover:bg-ucc-800 text-white text-sm font-semibold rounded-md">Filtrar</button>
+        <a href="{% url 'historial' %}" class="px-4 py-2 text-sm font-semibold text-grafito-700 border border-grafito-200 rounded-md hover:bg-grafito-100">Limpiar</a>
+    </div>
+</form>
+
+<p class="text-sm text-grafito-500 mb-2">{{ total }} registro{{ total|pluralize }}</p>
+
+<div class="bg-white rounded-lg border border-grafito-200 overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-grafito-50 text-grafito-500 text-left text-xs uppercase tracking-wide">
+            <tr>
+                <th class="px-5 py-3 font-semibold">Fecha</th>
+                <th class="px-5 py-3 font-semibold">Hora</th>
+                <th class="px-5 py-3 font-semibold">Persona</th>
+                <th class="px-5 py-3 font-semibold">Estado</th>
+                <th class="px-5 py-3 font-semibold">Distancia</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-grafito-100">
+            {% for acceso in pagina %}
+                <tr class="hover:bg-grafito-50">
+                    <td class="px-5 py-3 tabular-nums text-grafito-700">{{ acceso.fecha_hora|date:"d/m/Y" }}</td>
+                    <td class="px-5 py-3 tabular-nums text-grafito-700">{{ acceso.fecha_hora|date:"H:i:s" }}</td>
+                    <td class="px-5 py-3">
+                        {% if acceso.persona %}
+                            <a href="{% url 'detalle_persona' acceso.persona.id %}" class="font-medium text-grafito-900 hover:text-ucc-700">{{ acceso.persona.nombre_completo }}</a>
+                        {% elif acceso.reconocido %}
+                            <span class="text-grafito-700">{{ acceso.nombre_detectado }}</span>
+                            <span class="text-xs text-grafito-400">(persona eliminada)</span>
+                        {% else %}
+                            <span class="text-grafito-500">Desconocido</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3">
+                        {% if acceso.reconocido %}
+                            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-ucc-50 text-ucc-800 border border-ucc-200">Reconocido</span>
+                        {% else %}
+                            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-50 text-red-800 border border-red-200">Desconocido</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 tabular-nums text-grafito-500">{{ acceso.distancia|floatformat:3 }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5" class="px-5 py-10 text-center text-grafito-500">No hay accesos con estos filtros.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagina.paginator.num_pages > 1 %}
+    <nav class="mt-4 flex items-center justify-between text-sm">
+        <span class="text-grafito-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        <div class="flex gap-2">
+            {% if pagina.has_previous %}
+                <a href="?{{ filtros }}{% if filtros %}&{% endif %}pagina={{ pagina.previous_page_number }}"
+                    class="px-3 py-1.5 border border-grafito-200 rounded-md bg-white hover:bg-grafito-100">Anterior</a>
+            {% endif %}
+            {% if pagina.has_next %}
+                <a href="?{{ filtros }}{% if filtros %}&{% endif %}pagina={{ pagina.next_page_number }}"
+                    class="px-3 py-1.5 border border-grafito-200 rounded-md bg-white hover:bg-grafito-100">Siguiente</a>
+            {% endif %}
+        </div>
+    </nav>
+{% endif %}
+{% endblock %}

@@ -4,6 +4,8 @@ from datetime import timedelta
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
@@ -304,3 +306,57 @@ def api_reconocer(request):
   # Mismo contrato que la API de FastAPI
   faces = [{'name': rostro['name'], 'box': rostro['box']} for rostro in rostros]
   return JsonResponse({'faces': faces})
+
+
+# ================= HISTORIAL =================
+
+def leer_fecha(texto):
+  """Convierte "AAAA-MM-DD" en fecha; devuelve None si no es válida."""
+  try:
+    return parse_date(texto)
+  except ValueError:
+    return None
+
+
+@login_required
+@permission_required('reconocimiento.view_registroacceso', raise_exception=True)
+def historial(request):
+  '''
+  Tabla de accesos con filtros por GET (idea de HistoryPanel.tsx):
+  ?desde=AAAA-MM-DD&hasta=AAAA-MM-DD&persona=<id>&estado=reconocido|desconocido
+  '''
+  desde = request.GET.get('desde', '')
+  hasta = request.GET.get('hasta', '')
+  persona_id = request.GET.get('persona', '')
+  estado = request.GET.get('estado', '')
+
+  accesos = RegistroAcceso.objects.select_related('persona')
+
+  if leer_fecha(desde):
+    accesos = accesos.filter(fecha_hora__date__gte=leer_fecha(desde))
+  if leer_fecha(hasta):
+    accesos = accesos.filter(fecha_hora__date__lte=leer_fecha(hasta))
+  if persona_id.isdigit():
+    accesos = accesos.filter(persona_id=persona_id)
+  if estado == 'reconocido':
+    accesos = accesos.filter(reconocido=True)
+  elif estado == 'desconocido':
+    accesos = accesos.filter(reconocido=False)
+
+  paginador = Paginator(accesos, 50)
+  pagina = paginador.get_page(request.GET.get('pagina'))
+
+  # Filtros actuales sin "pagina", para armar los enlaces de paginación
+  filtros = request.GET.copy()
+  filtros.pop('pagina', None)
+
+  return render(request, 'historial.html', {
+    'pagina': pagina,
+    'total': paginador.count,
+    'personas': Persona.objects.all(),
+    'desde': desde,
+    'hasta': hasta,
+    'persona_id': persona_id,
+    'estado': estado,
+    'filtros': filtros.urlencode(),
+  })

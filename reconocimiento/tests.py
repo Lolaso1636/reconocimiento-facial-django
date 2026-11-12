@@ -333,3 +333,40 @@ class ApiReconocerTest(TestCase):
     self.assertEqual(respuesta.status_code, 400)
     self.assertEqual(self.post_json({'otra': 'cosa'}).status_code, 400)
     self.assertEqual(self.post_json({'image': 'sin coma'}).status_code, 400)
+
+
+class HistorialTest(TestCase):
+
+  def setUp(self):
+    from datetime import timedelta
+    from django.utils import timezone
+    self.isabella = Persona.objects.create(nombres='Isabella', apellidos='Ardila', documento='100')
+    self.juan = Persona.objects.create(nombres='Juan', apellidos='Melo', documento='200')
+    self.r1 = RegistroAcceso.objects.create(persona=self.isabella, nombre_detectado='Isabella Ardila', distancia=0.3, reconocido=True)
+    self.r2 = RegistroAcceso.objects.create(persona=self.juan, nombre_detectado='Juan Melo', distancia=0.4, reconocido=True)
+    self.r3 = RegistroAcceso.objects.create(nombre_detectado='Unknown', distancia=0.8, reconocido=False)
+    # r1 fue hace 3 días
+    RegistroAcceso.objects.filter(id=self.r1.id).update(fecha_hora=timezone.now() - timedelta(days=3))
+    self.client.force_login(crear_usuario('vigilante', ['view_registroacceso']))
+
+  def ids(self, **filtros):
+    respuesta = self.client.get(reverse('historial'), filtros)
+    self.assertEqual(respuesta.status_code, 200)
+    return {r.id for r in respuesta.context['pagina']}
+
+  def test_sin_permiso_403(self):
+    self.client.force_login(crear_usuario('otro'))
+    self.assertEqual(self.client.get(reverse('historial')).status_code, 403)
+
+  def test_filtros(self):
+    from django.utils import timezone
+    hoy = timezone.localdate().isoformat()
+    self.assertEqual(self.ids(), {self.r1.id, self.r2.id, self.r3.id})
+    self.assertEqual(self.ids(estado='desconocido'), {self.r3.id})
+    self.assertEqual(self.ids(estado='reconocido'), {self.r1.id, self.r2.id})
+    self.assertEqual(self.ids(persona=self.isabella.id), {self.r1.id})
+    self.assertEqual(self.ids(desde=hoy), {self.r2.id, self.r3.id})
+    self.assertEqual(self.ids(hasta=hoy, estado='reconocido'), {self.r1.id, self.r2.id})
+
+  def test_fecha_invalida_se_ignora(self):
+    self.assertEqual(len(self.ids(desde='2026-13-45', hasta='basura')), 3)

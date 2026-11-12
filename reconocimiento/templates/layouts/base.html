@@ -48,6 +48,12 @@
             Personas
           </a>
         {% endif %}
+        {% if perms.reconocimiento.view_registroacceso %}
+          <a href="{% url 'historial' %}"
+            class="px-4 py-3 text-sm font-medium border-b-2 transition {% if actual == 'historial' %}border-ucc-500 text-white{% else %}border-transparent text-grafito-200 hover:text-white{% endif %}">
+            Historial
+          </a>
+        {% endif %}
         {% if user.is_staff %}
           <a href="{% url 'grupos' %}"
             class="px-4 py-3 text-sm font-medium border-b-2 transition {% if actual == 'grupos' or actual == 'editar_grupo' %}border-ucc-500 text-white{% else %}border-transparent text-grafito-200 hover:text-white{% endif %}">

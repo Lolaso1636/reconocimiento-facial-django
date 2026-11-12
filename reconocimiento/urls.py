@@ -13,4 +13,5 @@ urlpatterns = [
   path('entrenar/', views.entrenar, name='entrenar'),
   path('camara/', views.camara, name='camara'),
   path('api/reconocer/', views.api_reconocer, name='api_reconocer'),
+  path('historial/', views.historial, name='historial'),
 ]
