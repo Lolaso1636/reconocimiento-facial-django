@@ -1,0 +1,68 @@
+{# Campos compartidos por crear.html y editar.html. Usa "datos" (POST) o "persona". #}
+{% if errors %}
+    <div class="mb-5 px-4 py-3 rounded-md border-l-4 border-red-600 bg-red-50 text-sm text-red-800">
+        <ul class="list-disc list-inside space-y-1">
+            {% for error in errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div>
+        <label for="nombres" class="block text-sm font-semibold text-grafito-700 mb-1.5">Nombres</label>
+        <input type="text" id="nombres" name="nombres" required maxlength="100"
+            value="{% if datos %}{{ datos.nombres }}{% else %}{{ persona.nombres }}{% endif %}"
+            class="w-full px-3 py-2 border border-grafito-200 rounded-md focus:outline-none focus:ring-2 focus:ring-ucc-500">
+    </div>
+    <div>
+        <label for="apellidos" class="block text-sm font-semibold text-grafito-700 mb-1.5">Apellidos</label>
+        <input type="text" id="apellidos" name="apellidos" required maxlength="100"
+            value="{% if datos %}{{ datos.apellidos }}{% else %}{{ persona.apellidos }}{% endif %}"
+            class="w-full px-3 py-2 border border-grafito-200 rounded-md focus:outline-none focus:ring-2 focus:ring-ucc-500">
+    </div>
+    <div>
+        <label for="documento" class="block text-sm font-semibold text-grafito-700 mb-1.5">Documento</label>
+        <input type="text" id="documento" name="documento" required maxlength="20"
+            value="{% if datos %}{{ datos.documento }}{% else %}{{ persona.documento }}{% endif %}"
+            class="w-full px-3 py-2 border border-grafito-200 rounded-md font-mono focus:outline-none focus:ring-2 focus:ring-ucc-500">
+    </div>
+    <div>
+        <label for="rol" class="block text-sm font-semibold text-grafito-700 mb-1.5">Rol</label>
+        <select id="rol" name="rol"
+            class="w-full px-3 py-2 border border-grafito-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-ucc-500">
+            {% for valor, etiqueta in rol_choices %}
+                <option value="{{ valor }}"
+                    {% if datos %}{% if datos.rol == valor %}selected{% endif %}{% elif persona.rol == valor %}selected{% endif %}>
+                    {{ etiqueta }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="md:col-span-2">
+        <label for="programa" class="block text-sm font-semibold text-grafito-700 mb-1.5">
+            Programa o dependencia <span class="font-normal text-grafito-400">(opcional)</span>
+        </label>
+        <input type="text" id="programa" name="programa" maxlength="150"
+            value="{% if datos %}{{ datos.programa }}{% else %}{{ persona.programa }}{% endif %}"
+            placeholder="Ej: Ingeniería de Sistemas"
+            class="w-full px-3 py-2 border border-grafito-200 rounded-md focus:outline-none focus:ring-2 focus:ring-ucc-500">
+    </div>
+    <div>
+        <label for="foto_perfil" class="block text-sm font-semibold text-grafito-700 mb-1.5">
+            Foto de perfil <span class="font-normal text-grafito-400">(opcional)</span>
+        </label>
+        <input type="file" id="foto_perfil" name="foto_perfil" accept="image/*"
+            class="block w-full text-sm text-grafito-600 file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-grafito-100 file:text-grafito-700 file:font-semibold">
+        <p class="text-xs text-grafito-400 mt-1">Si no se elige, se usa la primera foto de entrenamiento válida.</p>
+    </div>
+    <div class="flex items-center gap-3 md:pt-7">
+        <input type="checkbox" id="activo" name="activo"
+            {% if datos %}{% if datos.activo %}checked{% endif %}{% elif not persona or persona.activo %}checked{% endif %}
+            class="h-4 w-4 rounded border-grafito-400 text-ucc-700 focus:ring-ucc-500">
+        <label for="activo" class="text-sm text-grafito-700">
+            Activa <span class="text-grafito-400">(solo las personas activas son reconocidas)</span>
+        </label>
+    </div>
+</div>

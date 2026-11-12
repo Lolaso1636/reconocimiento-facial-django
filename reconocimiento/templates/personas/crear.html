@@ -1,0 +1,29 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Nueva persona{% endblock %}
+
+{% block content %}
+<a href="{% url 'personas' %}" class="text-sm text-grafito-500 hover:text-ucc-700">&larr; Volver a personas</a>
+<h1 class="text-2xl font-bold text-grafito-900 mt-2 mb-6">Nueva persona</h1>
+
+<form action="{% url 'crear_persona' %}" method="post" enctype="multipart/form-data"
+    class="bg-white rounded-lg border border-grafito-200 p-6 max-w-3xl">
+    {% csrf_token %}
+
+    {% include 'personas/_campos.html' %}
+
+    <div class="mt-6 pt-6 border-t border-grafito-100">
+        <label for="fotos" class="block text-sm font-semibold text-grafito-700 mb-1.5">Fotos de entrenamiento</label>
+        <input type="file" id="fotos" name="fotos" accept="image/*" multiple
+            class="block w-full text-sm text-grafito-600 file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-ucc-50 file:text-ucc-800 file:font-semibold">
+        <p class="text-xs text-grafito-500 mt-2">
+            Puedes seleccionar varias. Cada foto debe mostrar un solo rostro, de frente y con buena luz.
+            Entre más fotos válidas, mejor el reconocimiento.
+        </p>
+    </div>
+
+    <div class="mt-6 flex justify-end gap-2">
+        <a href="{% url 'personas' %}" class="px-4 py-2 text-sm font-semibold text-grafito-700 border border-grafito-200 rounded-md hover:bg-grafito-100">Cancelar</a>
+        <button type="submit" class="px-5 py-2 bg-ucc-700 hover:bg-ucc-800 text-white text-sm font-semibold rounded-md">Guardar persona</button>
+    </div>
+</form>
+{% endblock %}

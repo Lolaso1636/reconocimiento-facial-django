@@ -119,3 +119,129 @@ class HomeTest(TestCase):
     self.assertContains(respuesta, 'Accesos de hoy')
     self.assertEqual(respuesta.context['accesos_hoy'], 1)
     self.assertEqual(respuesta.context['desconocidos_hoy'], 1)
+
+
+import shutil
+import tempfile
+from unittest import mock
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
+from django.urls import reverse
+
+MEDIA_TEMPORAL = tempfile.mkdtemp()
+
+
+def imagen_subida(nombre='foto.jpg'):
+  import cv2
+  import numpy as np
+  _, jpg = cv2.imencode('.jpg', np.zeros((20, 20, 3), np.uint8))
+  return SimpleUploadedFile(nombre, jpg.tobytes(), content_type='image/jpeg')
+
+
+@override_settings(MEDIA_ROOT=MEDIA_TEMPORAL)
+class PersonasVistasTest(TestCase):
+
+  @classmethod
+  def tearDownClass(cls):
+    super().tearDownClass()
+    shutil.rmtree(MEDIA_TEMPORAL, ignore_errors=True)
+
+  def setUp(self):
+    self.persona = Persona.objects.create(nombres='Isabella', apellidos='Ardila', documento='100')
+    self.admin = crear_usuario('admin', [
+      'view_persona', 'add_persona', 'change_persona', 'delete_persona',
+    ])
+
+  def test_vistas_protegidas_redirigen_al_login(self):
+    urls = [
+      reverse('personas'),
+      reverse('detalle_persona', args=[self.persona.id]),
+      reverse('crear_persona'),
+      reverse('editar_persona', args=[self.persona.id]),
+    ]
+    for url in urls:
+      respuesta = self.client.get(url)
+      self.assertEqual(respuesta.status_code, 302, url)
+      self.assertTrue(respuesta.url.startswith(reverse('login')), url)
+
+  def test_usuario_sin_permiso_recibe_403(self):
+    self.client.force_login(crear_usuario('sinpermisos'))
+    self.assertEqual(self.client.get(reverse('personas')).status_code, 403)
+    self.assertEqual(self.client.get(reverse('crear_persona')).status_code, 403)
+    respuesta = self.client.post(reverse('eliminar_persona', args=[self.persona.id]))
+    self.assertEqual(respuesta.status_code, 403)
+    self.assertTrue(Persona.objects.filter(id=self.persona.id).exists())
+
+  def test_listar_y_buscar(self):
+    Persona.objects.create(nombres='Juan', apellidos='Melo', documento='200')
+    self.client.force_login(self.admin)
+    respuesta = self.client.get(reverse('personas'), {'q': 'ardila'})
+    self.assertEqual(list(respuesta.context['personas']), [self.persona])
+
+  def test_detalle_inexistente_da_404(self):
+    self.client.force_login(self.admin)
+    self.assertEqual(self.client.get(reverse('detalle_persona', args=[999])).status_code, 404)
+
+  @mock.patch('reconocimiento.views.servicios.generar_encoding', return_value=(True, 'ok'))
+  def test_crear_persona_con_varias_fotos(self, generar):
+    self.client.force_login(self.admin)
+    respuesta = self.client.post(reverse('crear_persona'), {
+      'nombres': 'Juan', 'apellidos': 'Melo', 'documento': '300',
+      'rol': 'DOCENTE', 'programa': '', 'activo': 'on',
+      'fotos': [imagen_subida('a.jpg'), imagen_subida('b.jpg')],
+    })
+    persona = Persona.objects.get(documento='300')
+    self.assertRedirects(respuesta, reverse('detalle_persona', args=[persona.id]))
+    self.assertEqual(persona.fotos.count(), 2)
+    self.assertEqual(generar.call_count, 2)
+
+  def test_crear_persona_documento_repetido(self):
+    self.client.force_login(self.admin)
+    respuesta = self.client.post(reverse('crear_persona'), {
+      'nombres': 'Otra', 'apellidos': 'Persona', 'documento': '100', 'rol': 'ESTUDIANTE',
+    })
+    self.assertContains(respuesta, 'Ya existe una persona con ese documento.')
+
+  def test_editar_persona(self):
+    self.client.force_login(self.admin)
+    self.client.post(reverse('editar_persona', args=[self.persona.id]), {
+      'nombres': 'Isabella', 'apellidos': 'Ardila', 'documento': '100',
+      'rol': 'VISITANTE', 'programa': 'Derecho',
+    })
+    self.persona.refresh_from_db()
+    self.assertEqual(self.persona.rol, 'VISITANTE')
+    self.assertFalse(self.persona.activo)  # checkbox sin marcar
+
+  def test_eliminar_persona_solo_por_post(self):
+    self.client.force_login(self.admin)
+    url = reverse('eliminar_persona', args=[self.persona.id])
+    self.assertEqual(self.client.get(url).status_code, 405)
+    self.client.post(url)
+    self.assertFalse(Persona.objects.filter(id=self.persona.id).exists())
+
+  @mock.patch('reconocimiento.views.servicios.generar_encoding', return_value=(False, 'No se detectó ningún rostro en la foto.'))
+  def test_agregar_y_eliminar_foto(self, generar):
+    self.client.force_login(self.admin)
+    respuesta = self.client.post(reverse('agregar_foto', args=[self.persona.id]), {'fotos': [imagen_subida()]}, follow=True)
+    self.assertContains(respuesta, 'No se detectó ningún rostro')
+    foto = self.persona.fotos.get()
+    self.client.post(reverse('eliminar_foto', args=[foto.id]))
+    self.assertEqual(self.persona.fotos.count(), 0)
+
+  def test_entrenar_solo_staff(self):
+    self.client.force_login(self.admin)  # tiene permisos pero no es staff
+    respuesta = self.client.post(reverse('entrenar'))
+    self.assertEqual(respuesta.status_code, 302)
+    self.assertTrue(respuesta.url.startswith(reverse('login')))
+
+  @mock.patch('reconocimiento.views.servicios.generar_encoding', return_value=(True, 'ok'))
+  def test_entrenar_regenera_todas_las_fotos(self, generar):
+    FotoEntrenamiento.objects.create(persona=self.persona, imagen='a.jpg')
+    FotoEntrenamiento.objects.create(persona=self.persona, imagen='b.jpg')
+    self.admin.is_staff = True
+    self.admin.save()
+    self.client.force_login(self.admin)
+    respuesta = self.client.post(reverse('entrenar'), follow=True)
+    self.assertEqual(generar.call_count, 2)
+    self.assertContains(respuesta, '2 foto(s) procesada(s), 0 con error')

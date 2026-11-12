@@ -1,0 +1,116 @@
+{% extends 'layouts/base.html' %}
+{% block title %}{{ persona.nombre_completo }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'personas' %}" class="text-sm text-grafito-500 hover:text-ucc-700">&larr; Volver a personas</a>
+
+{# DATOS DE LA PERSONA #}
+<div class="bg-white rounded-lg border border-grafito-200 p-6 mt-3 mb-6 flex flex-col md:flex-row gap-6">
+    {% if persona.foto_perfil %}
+        <img src="{{ persona.foto_perfil.url }}" alt="{{ persona.nombre_completo }}" class="w-32 h-32 rounded-lg object-cover bg-grafito-100">
+    {% else %}
+        <div class="w-32 h-32 rounded-lg bg-grafito-200 text-grafito-600 flex items-center justify-center text-3xl font-semibold">
+            {{ persona.nombres|first }}{{ persona.apellidos|first }}
+        </div>
+    {% endif %}
+
+    <div class="flex-1">
+        <div class="flex flex-wrap items-center gap-3">
+            <h1 class="text-2xl font-bold text-grafito-900">{{ persona.nombre_completo }}</h1>
+            {% if persona.activo %}
+                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-ucc-50 text-ucc-800 border border-ucc-200">Activa</span>
+            {% else %}
+                <span class="px-2 py-0.5 rounded text-xs font-semibold bg-grafito-100 text-grafito-600 border border-grafito-200">Inactiva</span>
+            {% endif %}
+        </div>
+        <dl class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
+            <div><dt class="text-xs uppercase tracking-wide text-grafito-500">Documento</dt><dd class="font-mono text-grafito-900 mt-0.5">{{ persona.documento }}</dd></div>
+            <div><dt class="text-xs uppercase tracking-wide text-grafito-500">Rol</dt><dd class="text-grafito-900 mt-0.5">{{ persona.get_rol_display }}</dd></div>
+            <div><dt class="text-xs uppercase tracking-wide text-grafito-500">Programa</dt><dd class="text-grafito-900 mt-0.5">{{ persona.programa|default:"Sin programa" }}</dd></div>
+            <div><dt class="text-xs uppercase tracking-wide text-grafito-500">Registrada el</dt><dd class="text-grafito-900 mt-0.5">{{ persona.fecha_registro|date:"j \d\e F \d\e Y" }}</dd></div>
+        </dl>
+    </div>
+
+    <div class="flex md:flex-col gap-2">
+        {% if perms.reconocimiento.change_persona %}
+            <a href="{% url 'editar_persona' persona.id %}" class="px-4 py-2 text-sm font-semibold text-center text-grafito-700 border border-grafito-200 rounded-md hover:bg-grafito-100">Editar</a>
+        {% endif %}
+        {% if perms.reconocimiento.delete_persona %}
+            <form action="{% url 'eliminar_persona' persona.id %}" method="post"
+                onsubmit="return confirm('¿Eliminar a {{ persona.nombre_completo|escapejs }} y todas sus fotos? Sus accesos se conservarán en el historial.');">
+                {% csrf_token %}
+                <button type="submit" class="w-full px-4 py-2 text-sm font-semibold text-red-700 border border-red-200 rounded-md hover:bg-red-50">Eliminar</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+{# FOTOS DE ENTRENAMIENTO #}
+<section class="bg-white rounded-lg border border-grafito-200 mb-6">
+    <div class="px-5 py-3 border-b border-grafito-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 class="font-semibold text-grafito-900">
+            Fotos de entrenamiento <span class="text-grafito-400 font-normal">({{ fotos|length }})</span>
+        </h2>
+        {% if perms.reconocimiento.change_persona %}
+            <form action="{% url 'agregar_foto' persona.id %}" method="post" enctype="multipart/form-data" class="flex items-center gap-2">
+                {% csrf_token %}
+                <input type="file" name="fotos" accept="image/*" multiple required
+                    class="text-sm text-grafito-600 file:mr-2 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-grafito-100 file:text-grafito-700 file:font-semibold">
+                <button type="submit" class="px-4 py-1.5 bg-ucc-700 hover:bg-ucc-800 text-white text-sm font-semibold rounded-md">Agregar</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <div class="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        {% for foto in fotos %}
+            <figure class="rounded-md border {% if foto.procesada %}border-grafito-200{% else %}border-red-300{% endif %} overflow-hidden">
+                <img src="{{ foto.imagen.url }}" alt="Foto {{ forloop.counter }}" class="w-full aspect-square object-cover bg-grafito-100">
+                <figcaption class="px-2 py-2 flex items-center justify-between gap-2">
+                    {% if foto.procesada %}
+                        <span class="text-xs font-semibold text-ucc-700">Válida</span>
+                    {% else %}
+                        <span class="text-xs font-semibold text-red-700" title="No se detectó exactamente un rostro">Sin rostro válido</span>
+                    {% endif %}
+                    {% if perms.reconocimiento.change_persona %}
+                        <form action="{% url 'eliminar_foto' foto.id %}" method="post" onsubmit="return confirm('¿Eliminar esta foto?');">
+                            {% csrf_token %}
+                            <button type="submit" class="text-xs text-grafito-500 hover:text-red-700">Eliminar</button>
+                        </form>
+                    {% endif %}
+                </figcaption>
+            </figure>
+        {% empty %}
+            <p class="col-span-full text-sm text-grafito-500 text-center py-6">
+                Esta persona no tiene fotos de entrenamiento, por lo que la cámara no puede reconocerla.
+            </p>
+        {% endfor %}
+    </div>
+</section>
+
+{# HISTORIAL DE ACCESOS DE ESTA PERSONA #}
+<section class="bg-white rounded-lg border border-grafito-200">
+    <div class="px-5 py-3 border-b border-grafito-100">
+        <h2 class="font-semibold text-grafito-900">Historial de accesos <span class="text-grafito-400 font-normal">(últimos 50)</span></h2>
+    </div>
+    <table class="w-full text-sm">
+        <thead class="bg-grafito-50 text-grafito-500 text-left text-xs uppercase tracking-wide">
+            <tr>
+                <th class="px-5 py-2 font-semibold">Fecha</th>
+                <th class="px-5 py-2 font-semibold">Hora</th>
+                <th class="px-5 py-2 font-semibold">Distancia</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-grafito-100">
+            {% for acceso in accesos %}
+                <tr>
+                    <td class="px-5 py-2 tabular-nums text-grafito-700">{{ acceso.fecha_hora|date:"d/m/Y" }}</td>
+                    <td class="px-5 py-2 tabular-nums text-grafito-700">{{ acceso.fecha_hora|date:"H:i:s" }}</td>
+                    <td class="px-5 py-2 tabular-nums text-grafito-500">{{ acceso.distancia|floatformat:3 }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="3" class="px-5 py-8 text-center text-grafito-500">Sin accesos registrados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

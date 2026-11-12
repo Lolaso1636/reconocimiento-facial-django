@@ -1,0 +1,21 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Editar persona{% endblock %}
+
+{% block content %}
+<a href="{% url 'detalle_persona' persona.id %}" class="text-sm text-grafito-500 hover:text-ucc-700">&larr; Volver al detalle</a>
+<h1 class="text-2xl font-bold text-grafito-900 mt-2 mb-6">Editar: {{ persona.nombre_completo }}</h1>
+
+<form action="{% url 'editar_persona' persona.id %}" method="post" enctype="multipart/form-data"
+    class="bg-white rounded-lg border border-grafito-200 p-6 max-w-3xl">
+    {% csrf_token %}
+
+    {% include 'personas/_campos.html' with datos=request.POST %}
+
+    <p class="mt-6 text-xs text-grafito-500">Las fotos de entrenamiento se administran desde el detalle de la persona.</p>
+
+    <div class="mt-6 flex justify-end gap-2">
+        <a href="{% url 'detalle_persona' persona.id %}" class="px-4 py-2 text-sm font-semibold text-grafito-700 border border-grafito-200 rounded-md hover:bg-grafito-100">Cancelar</a>
+        <button type="submit" class="px-5 py-2 bg-ucc-700 hover:bg-ucc-800 text-white text-sm font-semibold rounded-md">Guardar cambios</button>
+    </div>
+</form>
+{% endblock %}
