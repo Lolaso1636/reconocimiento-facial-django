@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro · Reconocimiento Facial UCC</title>
+    {% include 'layouts/_tailwind.html' %}
+</head>
+<body class="bg-grafito-50 font-sans min-h-screen flex items-center justify-center p-4 antialiased">
+
+    <main class="w-full max-w-lg bg-white rounded-lg shadow-sm border border-grafito-200 border-t-4 border-t-ucc-500 p-8 md:p-10">
+
+        <div class="flex items-center gap-4 mb-6">
+            <img src="{% static 'img/logo_ucc.png' %}" alt="UCC" class="h-14 w-auto">
+            <div>
+                <h1 class="text-xl font-bold text-grafito-900">Crear cuenta</h1>
+                <p class="text-sm text-grafito-500">Un administrador asignará tus permisos después del registro.</p>
+            </div>
+        </div>
+
+        {% if errors %}
+            <div class="mb-5 px-4 py-3 rounded-md border-l-4 border-red-600 bg-red-50 text-sm text-red-800">
+                <ul class="list-disc list-inside space-y-1">
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <form action="{% url 'registro' %}" method="post" class="space-y-4">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="first_name" class="block text-sm font-semibold text-grafito-700 mb-1.5">Nombres</label>
+                    <input type="text" id="first_name" name="first_name" value="{{ datos.first_name }}"
+                        class="w-full px-3 py-2.5 border border-grafito-200 rounded-md focus:outline-none focus:ring-2 focus:ring-ucc-500">
+                </div>
+                <div>
+                    <label for="last_name" class="block text-sm font-semibold text-grafito-700 mb-1.5">Apellidos</label>
+                    <input type="text" id="last_name" name="last_name" value="{{ datos.last_name }}"
+                        class="w-full px-3 py-2.5 border border-grafito-200 rounded-md focus:outline-none focus:ring-2 focus:ring-ucc-500">
+                </div>
+            </div>
+
+            <div>
+                <label for="username" class="block text-sm font-semibold text-grafito-700 mb-1.5">Usuario</label>
+                <input type="text" id="username" name="username" required value="{{ datos.username }}"
+                    class="w-full px-3 py-2.5 border border-grafito-200 rounded-md focus:outline-none focus:ring-2 focus:ring-ucc-500">
+            </div>
+
+            <div>
+                <label for="email" class="block text-sm font-semibold text-grafito-700 mb-1.5">Correo electrónico</label>
+                <input type="email" id="email" name="email" required value="{{ datos.email }}"
+                    class="w-full px-3 py-2.5 border border-grafito-200 rounded-md focus:outline-none focus:ring-2 focus:ring-ucc-500">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="password1" class="block text-sm font-semibold text-grafito-700 mb-1.5">Contraseña</label>
+                    <input type="password" id="password1" name="password1" required
+                        class="w-full px-3 py-2.5 border border-grafito-200 rounded-md focus:outline-none focus:ring-2 focus:ring-ucc-500">
+                </div>
+                <div>
+                    <label for="password2" class="block text-sm font-semibold text-grafito-700 mb-1.5">Confirmar contraseña</label>
+                    <input type="password" id="password2" name="password2" required
+                        class="w-full px-3 py-2.5 border border-grafito-200 rounded-md focus:outline-none focus:ring-2 focus:ring-ucc-500">
+                </div>
+            </div>
+
+            <button type="submit"
+                class="w-full py-2.5 bg-ucc-700 hover:bg-ucc-800 text-white font-semibold rounded-md transition">
+                Registrarme
+            </button>
+        </form>
+
+        <p class="mt-6 text-center text-sm text-grafito-500">
+            ¿Ya tienes cuenta?
+            <a href="{% url 'login' %}" class="font-semibold text-ucc-700 hover:underline">Inicia sesión</a>
+        </p>
+    </main>
+
+</body>
+</html>

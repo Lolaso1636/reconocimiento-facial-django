@@ -1,0 +1,65 @@
+{% extends 'layouts/base.html' %}
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-grafito-900">Hola, {{ user.first_name|default:user.username }}</h1>
+    {% if puede_ver %}
+        <p class="text-sm text-grafito-500 mt-1">Resumen del {{ hoy|date:"j \d\e F \d\e Y" }}</p>
+    {% endif %}
+</div>
+
+{% if puede_ver %}
+
+    {# TARJETAS DE ESTADO (idea de StatusCard.tsx) #}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div class="bg-white rounded-lg border border-grafito-200 border-l-4 border-l-ucc-600 p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-grafito-500">Personas registradas</p>
+            <p class="text-3xl font-bold text-grafito-900 mt-2 tabular-nums">{{ total_personas }}</p>
+            <p class="text-xs text-grafito-500 mt-1">{{ personas_activas }} activas</p>
+        </div>
+        <div class="bg-white rounded-lg border border-grafito-200 border-l-4 border-l-grafito-600 p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-grafito-500">Accesos de hoy</p>
+            <p class="text-3xl font-bold text-grafito-900 mt-2 tabular-nums">{{ accesos_hoy }}</p>
+            <p class="text-xs text-grafito-500 mt-1">Detecciones registradas por la cámara</p>
+        </div>
+        <div class="bg-white rounded-lg border border-grafito-200 border-l-4 border-l-red-600 p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-grafito-500">Desconocidos de hoy</p>
+            <p class="text-3xl font-bold text-grafito-900 mt-2 tabular-nums">{{ desconocidos_hoy }}</p>
+            <p class="text-xs text-grafito-500 mt-1">Rostros que no coincidieron con nadie</p>
+        </div>
+    </div>
+
+    <section class="bg-white rounded-lg border border-grafito-200">
+        <div class="px-5 py-3 border-b border-grafito-100">
+            <h2 class="font-semibold text-grafito-900">Últimos accesos</h2>
+        </div>
+        <table class="w-full text-sm">
+            <tbody class="divide-y divide-grafito-100">
+                {% for acceso in ultimos_accesos %}
+                    <tr>
+                        <td class="px-5 py-3">
+                            <span class="inline-block w-2 h-2 rounded-full mr-2 {% if acceso.reconocido %}bg-ucc-600{% else %}bg-red-600{% endif %}"></span>
+                            <span class="font-medium text-grafito-900">{% if acceso.reconocido %}{{ acceso.nombre_detectado }}{% else %}Desconocido{% endif %}</span>
+                        </td>
+                        <td class="px-5 py-3 text-grafito-500 text-right tabular-nums">{{ acceso.fecha_hora|date:"d/m/Y H:i:s" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td class="px-5 py-8 text-center text-grafito-500">Todavía no hay accesos registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+{% else %}
+
+    <div class="bg-white rounded-lg border border-grafito-200 border-l-4 border-l-amber-500 p-6 max-w-2xl">
+        <h2 class="font-semibold text-grafito-900">Tu cuenta aún no tiene permisos asignados</h2>
+        <p class="text-sm text-grafito-600 mt-2">
+            Para usar la cámara, ver personas o consultar el historial, un administrador debe agregarte
+            a un grupo (por ejemplo, Vigilante o Administrador). Cuando lo haga, vuelve a cargar esta página.
+        </p>
+    </div>
+
+{% endif %}
+{% endblock %}

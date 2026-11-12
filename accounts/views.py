@@ -1,3 +1,157 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.contrib import messages
+from django.contrib.auth import login
+from django.contrib.auth.models import User, Group, Permission
+from django.contrib.auth.decorators import user_passes_test
+from django.views.decorators.http import require_POST
 
-# Create your views here.
+
+def registro(request):
+  datos = ''
+  errors = []
+  if request.method == "POST":
+    username = request.POST.get("username")
+    email = request.POST.get("email")
+    first_name = request.POST.get("first_name")
+    last_name = request.POST.get("last_name")
+    password1 = request.POST.get("password1")
+    password2 = request.POST.get("password2")
+    datos = request.POST
+
+    if not username or not email or not password1:
+      errors.append("Usuario, correo y contraseña son obligatorios.")
+    if password1 != password2:
+      errors.append("Las contraseñas no coinciden.")
+    if User.objects.filter(username=username).exists():
+      errors.append("El nombre de usuario ya existe.")
+    if User.objects.filter(email=email).exists():
+      errors.append("El correo electrónico ya está registrado.")
+
+    if not errors:
+      user = User.objects.create_user(
+        username=username,
+        email=email,
+        password=password1,
+        first_name=first_name,
+        last_name=last_name
+      )
+      login(request, user)
+      messages.info(request, "Cuenta creada. Un administrador debe asignarte a un grupo para que tengas permisos.")
+      return redirect("home")
+
+  return render(request, "registro.html", {"errors": errors, "datos": datos})
+
+
+def es_admin(user):
+  return user.is_authenticated and user.is_staff
+
+
+@user_passes_test(es_admin)
+def grupos(request):
+  if request.method == "POST":
+    nombre = request.POST.get('nombre_grupo')
+    if nombre and not Group.objects.filter(name=nombre).exists():
+      Group.objects.create(name=nombre)
+      messages.success(request, f'Grupo "{nombre}" creado.')
+    elif nombre:
+      messages.error(request, f'Ya existe un grupo llamado "{nombre}".')
+    return redirect('grupos')
+
+  grupos = Group.objects.all().order_by('name')
+  return render(request, 'grupos.html', {'grupos': grupos})
+
+
+@require_POST
+@user_passes_test(es_admin)
+def eliminar_grupo(request, id_grupo):
+  grupo = get_object_or_404(Group, id=id_grupo)
+  grupo.delete()
+  messages.success(request, f'Grupo "{grupo.name}" eliminado.')
+  return redirect('grupos')
+
+
+def dar_miembros(grupo):
+  return grupo.user_set.all()
+
+
+def dar_no_miembros(grupo):
+  miembros = dar_miembros(grupo)
+  return User.objects.exclude(id__in=miembros.values_list('id', flat=True))
+
+
+@user_passes_test(es_admin)
+def editar_grupo(request, id_grupo):
+  grupo = get_object_or_404(Group, id=id_grupo)
+  if request.method == "POST":
+    nuevo_nombre = request.POST.get('name')
+    if nuevo_nombre:
+      grupo.name = nuevo_nombre
+      grupo.save()
+      messages.success(request, 'Nombre del grupo actualizado.')
+    return redirect('grupos')
+
+  miembros = dar_miembros(grupo)
+  no_miembros = dar_no_miembros(grupo)
+  return render(request, 'editar_grupo.html', {
+    'grupo': grupo,
+    'miembros': miembros,
+    'no_miembros': no_miembros,
+  })
+
+
+@require_POST
+@user_passes_test(es_admin)
+def agregar_usuario_grupo(request, id_grupo):
+  grupo = get_object_or_404(Group, id=id_grupo)
+  id_user = request.POST.get('id_user')
+  if id_user:
+    user = get_object_or_404(User, id=id_user)
+    grupo.user_set.add(user)
+    messages.success(request, f'{user.username} agregado al grupo.')
+  return redirect('editar_grupo', id_grupo=grupo.id)
+
+
+@require_POST
+@user_passes_test(es_admin)
+def eliminar_usuario_grupo(request, id_grupo):
+  grupo = get_object_or_404(Group, id=id_grupo)
+  id_user = request.POST.get('id_user')
+  if id_user:
+    user = get_object_or_404(User, id=id_user)
+    grupo.user_set.remove(user)
+    messages.success(request, f'{user.username} quitado del grupo.')
+  return redirect('editar_grupo', id_grupo=grupo.id)
+
+
+@user_passes_test(es_admin)
+def permisos(request):
+  # Solo se muestran los permisos de la app del proyecto y de usuarios/grupos
+  permisos = Permission.objects.filter(
+    content_type__app_label__in=['reconocimiento', 'auth']
+  ).select_related('content_type').order_by('content_type__model', 'codename')
+  grupos = Group.objects.all().order_by('name')
+
+  grupo_id = request.POST.get('grupo') if request.POST.get('grupo') else request.GET.get('grupo')
+  if grupo_id:
+    grupo = get_object_or_404(Group, id=grupo_id)
+  else:
+    grupo = grupos.first()
+
+  if request.method == "POST" and grupo:
+    permisos_ids = request.POST.getlist('permisos')
+    grupo.permissions.set(permisos_ids)
+    messages.success(request, f'Permisos del grupo "{grupo.name}" guardados.')
+    return redirect(f"{reverse('permisos')}?grupo={grupo.id}")
+
+  if grupo:
+    permisos_grupo = set(grupo.permissions.values_list('id', flat=True))
+  else:
+    permisos_grupo = set()
+
+  return render(request, 'permisos.html', {
+    'permisos': permisos,
+    'grupos': grupos,
+    'grupo': grupo,
+    'permisos_grupo': permisos_grupo,
+  })

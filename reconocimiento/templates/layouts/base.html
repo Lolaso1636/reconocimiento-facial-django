@@ -1,0 +1,109 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Inicio{% endblock %} · Reconocimiento Facial UCC</title>
+    {% include 'layouts/_tailwind.html' %}
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-grafito-50 text-grafito-800 font-sans min-h-screen flex flex-col antialiased">
+
+  {# ENCABEZADO: logo, nombre de la universidad y reloj (como App.tsx) #}
+  <header class="bg-white border-b-4 border-ucc-500">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between gap-4">
+      <a href="{% url 'home' %}" class="flex items-center gap-4">
+        <img src="{% static 'img/logo_ucc.png' %}" alt="Universidad Cooperativa de Colombia" class="h-14 w-auto object-contain">
+        <div class="flex flex-col">
+          <span class="text-lg md:text-2xl font-bold text-grafito-900 leading-tight">Universidad Cooperativa de Colombia</span>
+          <span class="text-sm text-grafito-500">Sistema de Reconocimiento Facial</span>
+        </div>
+      </a>
+      <div class="hidden md:block text-right">
+        <p id="reloj-fecha" class="text-xs text-grafito-500 first-letter:uppercase"></p>
+        <p id="reloj-hora" class="text-xl font-semibold text-grafito-900 tabular-nums"></p>
+      </div>
+    </div>
+  </header>
+
+  {# MENÚ #}
+  {% with actual=request.resolver_match.url_name %}
+  <nav class="bg-grafito-800">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between">
+      <div class="flex items-center gap-1 overflow-x-auto">
+        <a href="{% url 'home' %}"
+          class="px-4 py-3 text-sm font-medium border-b-2 transition {% if actual == 'home' %}border-ucc-500 text-white{% else %}border-transparent text-grafito-200 hover:text-white{% endif %}">
+          Inicio
+        </a>
+        {% if user.is_staff %}
+          <a href="{% url 'grupos' %}"
+            class="px-4 py-3 text-sm font-medium border-b-2 transition {% if actual == 'grupos' or actual == 'editar_grupo' %}border-ucc-500 text-white{% else %}border-transparent text-grafito-200 hover:text-white{% endif %}">
+            Grupos
+          </a>
+          <a href="{% url 'permisos' %}"
+            class="px-4 py-3 text-sm font-medium border-b-2 transition {% if actual == 'permisos' %}border-ucc-500 text-white{% else %}border-transparent text-grafito-200 hover:text-white{% endif %}">
+            Permisos
+          </a>
+        {% endif %}
+      </div>
+      {% if user.is_authenticated %}
+        <div class="flex items-center gap-3 pl-4">
+          <span class="hidden sm:inline text-sm text-grafito-200">{{ user.get_full_name|default:user.username }}</span>
+          <form action="{% url 'logout' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="px-3 py-1.5 text-sm font-medium text-white border border-grafito-500 rounded-md hover:bg-grafito-700 transition">
+              Salir
+            </button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  </nav>
+  {% endwith %}
+
+  <main class="flex-1 w-full max-w-7xl mx-auto px-4 md:px-8 py-8">
+
+    {# MENSAJES de django.contrib.messages #}
+    {% if messages %}
+      <div class="mb-6 space-y-2">
+        {% for message in messages %}
+          <div class="px-4 py-3 rounded-md border-l-4 text-sm
+            {% if message.tags == 'success' %}bg-ucc-50 border-ucc-600 text-ucc-800
+            {% elif message.tags == 'error' %}bg-red-50 border-red-600 text-red-800
+            {% elif message.tags == 'warning' %}bg-amber-50 border-amber-500 text-amber-800
+            {% else %}bg-white border-grafito-400 text-grafito-700{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% block content %}
+    {% endblock %}
+  </main>
+
+  {# PIE DE PÁGINA (como App.tsx) #}
+  <footer class="border-t border-grafito-200 bg-white">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 py-4 text-center text-sm text-grafito-500">
+      &copy; {% now "Y" %} Universidad Cooperativa de Colombia
+    </div>
+  </footer>
+
+  <script>
+    // Reloj del encabezado (misma idea que el useEffect de App.tsx)
+    function actualizarReloj() {
+      const ahora = new Date();
+      const hora = document.getElementById('reloj-hora');
+      const fecha = document.getElementById('reloj-fecha');
+      if (hora) hora.textContent = ahora.toLocaleTimeString('es-CO');
+      if (fecha) fecha.textContent = ahora.toLocaleDateString('es-CO', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+      });
+    }
+    actualizarReloj();
+    setInterval(actualizarReloj, 1000);
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

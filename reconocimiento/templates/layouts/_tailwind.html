@@ -1,0 +1,39 @@
+{% load static %}
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Colores institucionales de la UCC tomados del logo
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ucc: {
+            50: '#f3f9ec',
+            100: '#e3f1d0',
+            200: '#c8e3a2',
+            500: '#78c028',
+            600: '#5e9e1c',
+            700: '#477a15',
+            800: '#365d12',
+          },
+          grafito: {
+            50: '#f5f6f6',
+            100: '#e7e9ea',
+            200: '#d1d4d6',
+            400: '#8a9096',
+            500: '#6b7177',
+            600: '#50565c',
+            700: '#3a3f44',
+            800: '#2a2e32',
+            900: '#1e2124',
+          },
+        },
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'Segoe UI', 'sans-serif'],
+        },
+      },
+    },
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="{% static 'img/logo_ucc.png' %}">

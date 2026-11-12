@@ -87,3 +87,35 @@ class ComandosTest(TestCase):
       {'view_persona', 'view_registroacceso', 'add_registroacceso'},
     )
     self.assertEqual(Group.objects.get(name='Administrador').permissions.count(), 12)
+
+
+def crear_usuario(username, permisos=()):
+  from django.contrib.auth.models import User, Permission
+  usuario = User.objects.create_user(username, password='x')
+  for codename in permisos:
+    usuario.user_permissions.add(Permission.objects.get(codename=codename))
+  return usuario
+
+
+class HomeTest(TestCase):
+
+  def test_home_redirige_al_login_sin_sesion(self):
+    from django.urls import reverse
+    respuesta = self.client.get(reverse('home'))
+    self.assertRedirects(respuesta, f"{reverse('login')}?next=/")
+
+  def test_home_sin_permisos_muestra_aviso(self):
+    from django.urls import reverse
+    self.client.force_login(crear_usuario('nuevo'))
+    respuesta = self.client.get(reverse('home'))
+    self.assertContains(respuesta, 'aún no tiene permisos asignados')
+    self.assertNotContains(respuesta, 'Accesos de hoy')
+
+  def test_home_con_permisos_muestra_estadisticas(self):
+    from django.urls import reverse
+    self.client.force_login(crear_usuario('vigilante', ['view_persona', 'view_registroacceso']))
+    RegistroAcceso.objects.create(nombre_detectado='Unknown', distancia=0.7, reconocido=False)
+    respuesta = self.client.get(reverse('home'))
+    self.assertContains(respuesta, 'Accesos de hoy')
+    self.assertEqual(respuesta.context['accesos_hoy'], 1)
+    self.assertEqual(respuesta.context['desconocidos_hoy'], 1)
