@@ -245,3 +245,91 @@ class PersonasVistasTest(TestCase):
     respuesta = self.client.post(reverse('entrenar'), follow=True)
     self.assertEqual(generar.call_count, 2)
     self.assertContains(respuesta, '2 foto(s) procesada(s), 0 con error')
+
+
+class ApiReconocerTest(TestCase):
+
+  def setUp(self):
+    self.persona = Persona.objects.create(nombres='Isabella', apellidos='Ardila', documento='100')
+    self.vigilante = crear_usuario('vigilante', ['add_registroacceso'])
+    self.url = reverse('api_reconocer')
+
+  def post_json(self, cuerpo, **extra):
+    import json
+    return self.client.post(self.url, json.dumps(cuerpo), content_type='application/json', **extra)
+
+  def rostro(self, name, persona_id, distancia=0.3):
+    return {'name': name, 'box': [60, 472, 368, 162], 'distancia': distancia, 'persona_id': persona_id}
+
+  def test_camara_redirige_al_login_y_da_403_sin_permiso(self):
+    respuesta = self.client.get(reverse('camara'))
+    self.assertTrue(respuesta.url.startswith(reverse('login')))
+    self.client.force_login(crear_usuario('sinpermisos'))
+    self.assertEqual(self.client.get(reverse('camara')).status_code, 403)
+
+  def test_camara_carga_con_permiso(self):
+    self.client.force_login(self.vigilante)
+    respuesta = self.client.get(reverse('camara'))
+    self.assertContains(respuesta, 'js/camara.js')
+    self.assertIn('csrftoken', respuesta.cookies)
+
+  def test_api_usuario_sin_permiso_recibe_403(self):
+    self.client.force_login(crear_usuario('sinpermisos'))
+    with mock.patch('reconocimiento.views.servicios.reconocer') as reconocer:
+      respuesta = self.post_json({'image': 'data:image/jpeg;base64,AAAA'})
+    self.assertEqual(respuesta.status_code, 403)
+    reconocer.assert_not_called()
+    self.assertEqual(RegistroAcceso.objects.count(), 0)
+
+  def test_api_sin_sesion_recibe_403(self):
+    self.assertEqual(self.post_json({'image': 'x'}).status_code, 403)
+
+  def test_api_solo_acepta_post(self):
+    self.client.force_login(self.vigilante)
+    self.assertEqual(self.client.get(self.url).status_code, 405)
+
+  def test_api_exige_csrf(self):
+    from django.test import Client
+    cliente = Client(enforce_csrf_checks=True)
+    cliente.force_login(self.vigilante)
+    respuesta = cliente.post(self.url, '{"image": "x"}', content_type='application/json')
+    self.assertEqual(respuesta.status_code, 403)
+
+  @mock.patch('reconocimiento.views.servicios.reconocer')
+  def test_api_responde_el_contrato_json(self, reconocer):
+    reconocer.return_value = [
+      self.rostro('Isabella Ardila', self.persona.id),
+      self.rostro('Unknown', None, 0.72),
+    ]
+    self.client.force_login(self.vigilante)
+    respuesta = self.post_json({'image': 'data:image/jpeg;base64,AAAA'})
+    self.assertEqual(respuesta.status_code, 200)
+    self.assertEqual(respuesta.json(), {'faces': [
+      {'name': 'Isabella Ardila', 'box': [60, 472, 368, 162]},
+      {'name': 'Unknown', 'box': [60, 472, 368, 162]},
+    ]})
+    reconocer.assert_called_once_with('data:image/jpeg;base64,AAAA')
+    self.assertEqual(RegistroAcceso.objects.filter(reconocido=True, persona=self.persona).count(), 1)
+    self.assertEqual(RegistroAcceso.objects.filter(reconocido=False).count(), 1)
+
+  @mock.patch('reconocimiento.views.servicios.reconocer')
+  def test_api_registra_maximo_una_vez_cada_60_segundos(self, reconocer):
+    from datetime import timedelta
+    from django.utils import timezone
+    reconocer.return_value = [self.rostro('Isabella Ardila', self.persona.id), self.rostro('Unknown', None, 0.8)]
+    self.client.force_login(self.vigilante)
+    for _ in range(3):
+      self.post_json({'image': 'data:image/jpeg;base64,AAAA'})
+    self.assertEqual(RegistroAcceso.objects.count(), 2)
+
+    # Pasados 60 segundos se vuelve a registrar
+    RegistroAcceso.objects.update(fecha_hora=timezone.now() - timedelta(seconds=61))
+    self.post_json({'image': 'data:image/jpeg;base64,AAAA'})
+    self.assertEqual(RegistroAcceso.objects.count(), 4)
+
+  def test_api_json_invalido_da_400(self):
+    self.client.force_login(self.vigilante)
+    respuesta = self.client.post(self.url, 'no es json', content_type='application/json')
+    self.assertEqual(respuesta.status_code, 400)
+    self.assertEqual(self.post_json({'otra': 'cosa'}).status_code, 400)
+    self.assertEqual(self.post_json({'image': 'sin coma'}).status_code, 400)

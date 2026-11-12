@@ -1,0 +1,81 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% block title %}Cámara{% endblock %}
+
+{% block content %}
+<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-2 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-grafito-900">Cámara en vivo</h1>
+        <p class="text-sm text-grafito-500 mt-1">Se analiza un fotograma cada 800 ms. Los accesos se guardan en el historial.</p>
+    </div>
+</div>
+
+{# Aviso de error (403, cámara bloqueada, servidor caído). Lo llena camara.js #}
+<div id="aviso" class="hidden mb-6 px-4 py-3 rounded-md border-l-4 border-red-600 bg-red-50 text-sm text-red-800"></div>
+
+<div class="flex flex-col xl:flex-row items-start justify-center gap-8">
+
+    {# CÁMARA (Camera.tsx + FaceOverlay.tsx) #}
+    <div class="flex flex-col items-center gap-3 w-full max-w-[640px]">
+        <div class="self-start text-sm text-grafito-700 bg-white px-3 py-1 rounded-md border border-grafito-200">
+            Rostros detectados: <span id="contador-rostros" class="font-semibold tabular-nums">0</span>
+        </div>
+
+        <div class="relative w-full aspect-[4/3] bg-grafito-900 rounded-lg overflow-hidden border border-grafito-300 shadow-sm">
+            <video id="video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-fill"></video>
+
+            {# Canvas superpuesto donde se dibujan los recuadros (coordenadas 640x480) #}
+            <canvas id="overlay" width="640" height="480" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+
+            <div id="indicador-vivo" class="absolute top-3 left-3 flex items-center gap-2 bg-grafito-900/70 px-3 py-1 rounded text-xs font-semibold text-white">
+                <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                EN VIVO
+            </div>
+        </div>
+
+        {# Canvas oculto donde se copia el fotograma que se envía al servidor #}
+        <canvas id="captura" width="640" height="480" class="hidden"></canvas>
+    </div>
+
+    {# PANEL LATERAL (Sidebar.tsx) #}
+    <aside class="w-full xl:w-80 bg-white rounded-lg border border-grafito-200 divide-y divide-grafito-100">
+
+        <div class="px-5 py-4 flex items-center justify-between">
+            <span class="text-sm text-grafito-500">Estado del sistema</span>
+            <span id="estado-sistema" class="flex items-center gap-2 text-sm font-semibold text-ucc-700">
+                <span id="estado-punto" class="w-2.5 h-2.5 rounded-full bg-ucc-600 animate-pulse"></span>
+                <span id="estado-texto">Iniciando</span>
+            </span>
+        </div>
+
+        <div class="px-5 py-4">
+            <p class="text-xs uppercase tracking-wide text-grafito-500">Detección</p>
+            <p id="texto-deteccion" class="font-semibold text-grafito-900 mt-1">Esperando rostro...</p>
+        </div>
+
+        <div class="px-5 py-4">
+            <p class="text-xs uppercase tracking-wide text-grafito-500">Personas en cámara</p>
+            <p id="personas-en-camara" class="text-2xl font-bold text-grafito-900 mt-1 tabular-nums">0</p>
+        </div>
+
+        <div id="panel-reconocido" class="hidden px-5 py-4 bg-ucc-50">
+            <p class="text-xs uppercase tracking-wide text-ucc-800">Usuario reconocido</p>
+            <p id="nombre-reconocido" class="text-lg font-bold text-ucc-800 mt-1"></p>
+        </div>
+
+        <div class="px-5 py-4">
+            <p class="font-semibold text-grafito-900 mb-3">Historial de esta sesión</p>
+            <ul id="historial-sesion" class="space-y-2 text-sm">
+                <li class="text-grafito-400">Sin registros</li>
+            </ul>
+        </div>
+    </aside>
+</div>
+
+{# Datos que necesita camara.js #}
+<div id="config-camara" data-url-api="{% url 'api_reconocer' %}" class="hidden"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/camara.js' %}"></script>
+{% endblock %}

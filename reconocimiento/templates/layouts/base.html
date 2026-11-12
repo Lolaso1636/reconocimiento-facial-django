@@ -36,6 +36,12 @@
           class="px-4 py-3 text-sm font-medium border-b-2 transition {% if actual == 'home' %}border-ucc-500 text-white{% else %}border-transparent text-grafito-200 hover:text-white{% endif %}">
           Inicio
         </a>
+        {% if perms.reconocimiento.add_registroacceso %}
+          <a href="{% url 'camara' %}"
+            class="px-4 py-3 text-sm font-medium border-b-2 transition {% if actual == 'camara' %}border-ucc-500 text-white{% else %}border-transparent text-grafito-200 hover:text-white{% endif %}">
+            Cámara
+          </a>
+        {% endif %}
         {% if perms.reconocimiento.view_persona %}
           <a href="{% url 'personas' %}"
             class="px-4 py-3 text-sm font-medium border-b-2 transition {% if actual == 'personas' or actual == 'detalle_persona' or actual == 'crear_persona' or actual == 'editar_persona' %}border-ucc-500 text-white{% else %}border-transparent text-grafito-200 hover:text-white{% endif %}">

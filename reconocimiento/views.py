@@ -1,9 +1,14 @@
+import json
+from datetime import timedelta
+
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.db.models import Q, Count
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from .models import Persona, FotoEntrenamiento, RegistroAcceso
 from . import servicios
@@ -233,3 +238,69 @@ def entrenar(request):
   for fallida in fallidas:
     messages.warning(request, fallida)
   return redirect('personas')
+
+
+# ================= CÁMARA Y API =================
+
+# Para no llenar la base de datos, cada persona (o "Unknown") se registra
+# como máximo una vez cada 60 segundos.
+SEGUNDOS_ENTRE_REGISTROS = 60
+
+
+@login_required
+@permission_required('reconocimiento.add_registroacceso', raise_exception=True)
+@ensure_csrf_cookie
+def camara(request):
+  return render(request, 'camara.html')
+
+
+def registrar_acceso(rostro):
+  '''
+  Crea un RegistroAcceso para un rostro detectado, respetando la regla de 60 s.
+  Devuelve True si se creó el registro.
+  '''
+  limite = timezone.now() - timedelta(seconds=SEGUNDOS_ENTRE_REGISTROS)
+  reconocido = rostro['persona_id'] is not None
+
+  if reconocido:
+    recientes = RegistroAcceso.objects.filter(persona_id=rostro['persona_id'], fecha_hora__gte=limite)
+  else:
+    recientes = RegistroAcceso.objects.filter(reconocido=False, fecha_hora__gte=limite)
+
+  if recientes.exists():
+    return False
+
+  RegistroAcceso.objects.create(
+    persona_id=rostro['persona_id'],
+    nombre_detectado=rostro['name'],
+    distancia=rostro['distancia'],
+    reconocido=reconocido,
+  )
+  return True
+
+
+@require_POST
+@permission_required('reconocimiento.add_registroacceso', raise_exception=True)
+def api_reconocer(request):
+  '''
+  Recibe JSON { "image": "data:image/jpeg;base64,..." } (igual que POST /recognize
+  de FastAPI) y responde { "faces": [ { "name", "box" } ] }.
+  El token CSRF llega en el header X-CSRFToken desde camara.js.
+  '''
+  try:
+    datos = json.loads(request.body)
+    imagen = datos['image']
+  except (ValueError, KeyError, TypeError):
+    return JsonResponse({'error': 'Se esperaba un JSON con el campo "image".'}, status=400)
+
+  try:
+    rostros = servicios.reconocer(imagen)
+  except ValueError as e:
+    return JsonResponse({'error': str(e)}, status=400)
+
+  for rostro in rostros:
+    registrar_acceso(rostro)
+
+  # Mismo contrato que la API de FastAPI
+  faces = [{'name': rostro['name'], 'box': rostro['box']} for rostro in rostros]
+  return JsonResponse({'faces': faces})

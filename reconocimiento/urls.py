@@ -11,4 +11,6 @@ urlpatterns = [
   path('personas/<int:id>/fotos/agregar/', views.agregar_foto, name='agregar_foto'),
   path('fotos/<int:id>/eliminar/', views.eliminar_foto, name='eliminar_foto'),
   path('entrenar/', views.entrenar, name='entrenar'),
+  path('camara/', views.camara, name='camara'),
+  path('api/reconocer/', views.api_reconocer, name='api_reconocer'),
 ]
