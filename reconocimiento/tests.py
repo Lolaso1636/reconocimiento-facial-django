@@ -33,3 +33,41 @@ class ModelosTest(TestCase):
     registro = RegistroAcceso.objects.get()
     self.assertIsNone(registro.persona)
     self.assertEqual(registro.nombre_detectado, 'Isabella Ardila')
+
+
+class ServicioReconocimientoTest(TestCase):
+
+  def setUp(self):
+    from . import servicios
+    servicios.invalidar_cache()
+
+  def test_cache_se_invalida_al_guardar_persona(self):
+    from . import servicios
+    servicios.obtener_encodings_conocidos()
+    self.assertIsNotNone(servicios._cache)
+    Persona.objects.create(nombres='Ana', apellidos='Ruiz', documento='2')
+    self.assertIsNone(servicios._cache)
+
+  def test_cache_solo_incluye_personas_activas(self):
+    from . import servicios
+    activa = Persona.objects.create(nombres='Ana', apellidos='Ruiz', documento='1')
+    inactiva = Persona.objects.create(nombres='Luis', apellidos='Mora', documento='2', activo=False)
+    for p in (activa, inactiva):
+      FotoEntrenamiento.objects.create(persona=p, imagen='x.jpg', encoding=[0.0] * 128, procesada=True)
+    encodings, nombres, ids = servicios.obtener_encodings_conocidos()
+    self.assertEqual(nombres, ['Ana Ruiz'])
+    self.assertEqual(ids, [activa.id])
+
+  def test_reconocer_rechaza_texto_invalido(self):
+    from . import servicios
+    with self.assertRaises(ValueError):
+      servicios.reconocer('esto no es una imagen')
+
+  def test_reconocer_imagen_sin_rostros(self):
+    import base64
+    import cv2
+    import numpy as np
+    from . import servicios
+    _, jpg = cv2.imencode('.jpg', np.zeros((480, 640, 3), np.uint8))
+    data_url = 'data:image/jpeg;base64,' + base64.b64encode(jpg.tobytes()).decode()
+    self.assertEqual(servicios.reconocer(data_url), [])
