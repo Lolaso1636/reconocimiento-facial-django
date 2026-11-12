@@ -27,7 +27,7 @@
             <div><dt class="text-xs uppercase tracking-wide text-grafito-500">Documento</dt><dd class="font-mono text-grafito-900 mt-0.5">{{ persona.documento }}</dd></div>
             <div><dt class="text-xs uppercase tracking-wide text-grafito-500">Rol</dt><dd class="text-grafito-900 mt-0.5">{{ persona.get_rol_display }}</dd></div>
             <div><dt class="text-xs uppercase tracking-wide text-grafito-500">Programa</dt><dd class="text-grafito-900 mt-0.5">{{ persona.programa|default:"Sin programa" }}</dd></div>
-            <div><dt class="text-xs uppercase tracking-wide text-grafito-500">Registrada el</dt><dd class="text-grafito-900 mt-0.5">{{ persona.fecha_registro|date:"j \d\e F \d\e Y" }}</dd></div>
+            <div><dt class="text-xs uppercase tracking-wide text-grafito-500">Registrada el</dt><dd class="text-grafito-900 mt-0.5">{{ persona.fecha_registro|date:"j" }} de {{ persona.fecha_registro|date:"F"|lower }} de {{ persona.fecha_registro|date:"Y" }}</dd></div>
         </dl>
     </div>
 

@@ -5,7 +5,7 @@
 <div class="mb-8">
     <h1 class="text-2xl font-bold text-grafito-900">Hola, {{ user.first_name|default:user.username }}</h1>
     {% if puede_ver %}
-        <p class="text-sm text-grafito-500 mt-1">Resumen del {{ hoy|date:"j \d\e F \d\e Y" }}</p>
+        <p class="text-sm text-grafito-500 mt-1">Resumen del {{ hoy|date:"j" }} de {{ hoy|date:"F"|lower }} de {{ hoy|date:"Y" }}</p>
     {% endif %}
 </div>
 
