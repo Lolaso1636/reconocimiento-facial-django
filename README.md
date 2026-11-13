@@ -37,9 +37,32 @@ permisos e historial.
 | **Grupos y Permisos** | Solo para staff: crear grupos, asignarles permisos y agregar o quitar usuarios. |
 | **Login y Registro** | Páginas de acceso con el logo de la universidad. |
 
+## Fotos de entrenamiento incluidas
+
+La carpeta `fotos_entrenamiento/` tiene las fotos usadas en el proyecto, como
+evidencia y para poder probarlo: **8 personas y 57 fotos** (51 válidas; las
+demás tienen 0 o más de 1 rostro y el sistema las descarta a propósito).
+
+| Persona | Fotos |
+|---|---|
+| David Vargas | 7 |
+| Ingeniera Nelly | 8 |
+| Ingeniero Dennis | 7 |
+| Ingeniero Fernando | 4 |
+| Ingeniero Oscar | 9 |
+| Isabella Ardila | 10 |
+| Juan Melo | 5 |
+| Miguel Melo | 7 |
+
+Para cargarlas, después de `migrate`:
+
+```powershell
+python manage.py importar_fotos fotos_entrenamiento
+```
+
 ## Cómo probarlo en 5 minutos
 
-No necesita fotos de nadie más: se prueba con las fotos propias.
+Se puede probar con las fotos incluidas (paso opcional abajo) o con fotos propias.
 
 Requisitos: **Python 3.11** y una cámara web.
 
@@ -54,6 +77,7 @@ pip install --no-deps -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py crear_grupos
+python manage.py importar_fotos fotos_entrenamiento   # opcional: carga las 8 personas
 python manage.py runserver
 ```
 
@@ -122,6 +146,7 @@ Navegador: dibuja recuadros, actualiza el panel y saluda por voz
 
 ```
 .
+├── fotos_entrenamiento/   Fotos del proyecto, una subcarpeta por persona
 ├── core/                  Configuración (settings, urls)
 ├── accounts/              Login, logout, registro, grupos y permisos
 │   └── templates/
@@ -207,8 +232,8 @@ python manage.py importar_fotos "C:\ruta\a\fotos"
 - Si se corre dos veces, no duplica las fotos.
 - Las fotos sin un rostro claro quedan marcadas como "Sin rostro válido".
 
-Las fotos de entrenamiento **no se incluyen en el repositorio** (son datos
-personales). Se guardan en `media/`, que está en `.gitignore`.
+Las fotos que se suben desde la aplicación se guardan en `media/`, que está en
+`.gitignore`. Las fotos del proyecto están en `fotos_entrenamiento/`.
 
 ## La cámara solo funciona en localhost o HTTPS
 
