@@ -4,24 +4,99 @@ Aplicación web para la **Universidad Cooperativa de Colombia** que reconoce
 rostros en tiempo real desde la cámara del navegador, saluda por voz a la
 persona reconocida y guarda un historial de accesos.
 
-Trabajo final de la materia **Optativa 1 (Django)**, Ingeniería de Sistemas.
-Aplica lo visto en clase (proyecto `core`, apps, vistas basadas en funciones,
-plantillas con herencia, autenticación, grupos y permisos) sobre un proyecto
-de reconocimiento facial que antes estaba hecho con FastAPI y React.
+**Autores:** Isabella Ardila y David Vargas
+**Materia:** Optativa 1 (Django), Ingeniería de Sistemas, Universidad Cooperativa de Colombia, campus Ibagué
 
-## Versión anterior
+## Qué es y relación con la materia
 
-En `proyecto_reconocimiento/` siguen las versiones anteriores, que no se borraron:
+Es el trabajo final de **Optativa 1**. Aplica lo visto en clase sobre un
+proyecto de reconocimiento facial:
 
-| Carpeta | Qué era |
+- Proyecto `core` con dos apps: `reconocimiento` y `accounts`.
+- Modelos y ORM, migraciones y panel de administración.
+- Vistas basadas en funciones con `request.POST.get`.
+- Plantillas con herencia (`layouts/base.html`).
+- Autenticación, grupos y permisos con los decoradores `@login_required`,
+  `@permission_required`, `@user_passes_test` y `@require_POST`.
+- Señales, comandos de gestión propios y pruebas automatizadas.
+
+**Esta versión reemplaza a la anterior**, que estaba hecha con **FastAPI**
+(backend) y **React** (frontend) y guardaba los rostros en un archivo
+`encodings.pkl`. Django conserva exactamente la misma lógica de reconocimiento.
+Ahora los rostros se guardan en la base de datos y se agregaron usuarios,
+permisos e historial.
+
+## Pantallas
+
+| Pantalla | Qué muestra |
 |---|---|
-| `backend/` | API en FastAPI (`POST /recognize`) que leía los rostros conocidos de `encodings.pkl` |
-| `frontend/` | Primera interfaz en HTML y JavaScript |
-| `react/reconocimiento-frontend/` | Interfaz en React, TypeScript y Tailwind |
+| **Inicio** | Saludo, tarjetas con personas registradas, accesos de hoy y desconocidos de hoy, y los últimos 5 accesos. Si la cuenta no tiene permisos, muestra un aviso. |
+| **Cámara** | Video en vivo con un recuadro verde y el nombre para personas conocidas, y uno rojo con "Desconocido" para el resto. Panel lateral con la última persona detectada y las 5 más recientes. Saludo por voz. |
+| **Personas** | Lista con búsqueda, número de fotos y estado. Permite crear, editar y eliminar personas, y subir o quitar fotos de entrenamiento. Cada foto se marca como "Válida" o "Sin rostro válido". |
+| **Historial** | Tabla de accesos con filtros por rango de fechas, persona y estado (reconocido o desconocido), paginada de 50 en 50. |
+| **Grupos y Permisos** | Solo para staff: crear grupos, asignarles permisos y agregar o quitar usuarios. |
+| **Login y Registro** | Páginas de acceso con el logo de la universidad. |
 
-Esta aplicación Django reemplaza a las tres con **la misma lógica de
-reconocimiento**. Los rostros conocidos ahora se guardan en la base de datos,
-así que ya no se necesita `encodings.pkl`.
+## Cómo probarlo en 5 minutos
+
+No necesita fotos de nadie más: se prueba con las fotos propias.
+
+Requisitos: **Python 3.11** y una cámara web.
+
+```powershell
+git clone <url-del-repositorio>
+cd reconocimiento-facial-django
+
+python -m venv venv
+venv\Scripts\activate
+pip install --no-deps -r requirements.txt
+
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py crear_grupos
+python manage.py runserver
+```
+
+1. Abrir **http://localhost:8000** e iniciar sesión con el superusuario.
+2. Ir a **Personas > Nueva persona**, llenar los datos y subir **5 o más fotos
+   propias** (de frente, buena luz, una sola cara por foto).
+3. Ir a **Cámara** y permitir el acceso a la cámara. Debe aparecer el nombre
+   en verde y escucharse el saludo.
+4. Ir a **Historial** para ver el acceso registrado.
+
+> `pip install --no-deps` es necesario: `face_recognition` pide el paquete
+> `dlib` y pip intentaría compilarlo (falla en Windows sin Visual Studio). El
+> `requirements.txt` ya incluye `dlib-bin`, que viene compilado.
+
+## Variables de entorno
+
+La configuración sensible se lee de variables de entorno. Si no se definen, se
+usan valores de **desarrollo**, así que para probar en local no hace falta
+definir nada.
+
+| Variable | Por defecto | Para producción |
+|---|---|---|
+| `DJANGO_SECRET_KEY` | Una clave de desarrollo (insegura) | Una clave larga y secreta |
+| `DJANGO_DEBUG` | `True` | `False` |
+| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,[::1]` | El dominio del servidor, separado por comas |
+
+Para generar una clave nueva:
+
+```powershell
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+Para definirlas en PowerShell (solo duran mientras la terminal esté abierta):
+
+```powershell
+$env:DJANGO_SECRET_KEY = "pegar-aqui-la-clave-generada"
+$env:DJANGO_DEBUG = "False"
+$env:DJANGO_ALLOWED_HOSTS = "midominio.com"
+python manage.py runserver
+```
+
+En Linux o macOS se usa `export DJANGO_DEBUG=False`. El archivo `.env` está en
+`.gitignore` para que nunca se suban claves al repositorio.
 
 ## Arquitectura
 
@@ -46,20 +121,20 @@ Navegador: dibuja recuadros, actualiza el panel y saluda por voz
 ```
 
 ```
-django_app/
+.
 ├── core/                  Configuración (settings, urls)
-├── accounts/              Login, logout, registro, grupos y permisos (de clase)
+├── accounts/              Login, logout, registro, grupos y permisos
 │   └── templates/
 └── reconocimiento/
     ├── models.py          Persona, FotoEntrenamiento, RegistroAcceso
-    ├── servicios.py       Lógica de reconocimiento traída de backend/main.py
+    ├── servicios.py       Lógica de reconocimiento facial
     ├── signals.py         Invalida la caché de encodings cuando cambian los datos
     ├── views.py           Vistas basadas en funciones
     ├── admin.py
     ├── management/commands/
     │   ├── importar_fotos.py
     │   └── crear_grupos.py
-    ├── static/js/camara.js    Camera.tsx + FaceOverlay.tsx + Sidebar.tsx en JS puro
+    ├── static/js/camara.js
     ├── static/img/logo_ucc.png
     └── templates/
         ├── layouts/base.html
@@ -72,17 +147,28 @@ django_app/
 **Persona**: alguien que el sistema puede reconocer.
 `nombres`, `apellidos`, `documento` (único), `rol` (Estudiante, Docente,
 Administrativo, Visitante), `programa` (opcional), `activo`, `foto_perfil`,
-`fecha_registro`. Tiene la propiedad `nombre_completo`. Solo las personas
-**activas** se reconocen.
+`fecha_registro`. Solo las personas **activas** se reconocen.
 
 **FotoEntrenamiento**: una foto de una persona (`related_name='fotos'`).
 Guarda la `imagen`, el `encoding` (lista de 128 números en un `JSONField`) y si
 fue `procesada`. Una foto solo es válida si tiene **exactamente un rostro**.
 
 **RegistroAcceso**: cada detección de la cámara (`related_name='accesos'`).
-`persona` (puede quedar vacía si la persona se elimina, `SET_NULL`),
-`nombre_detectado`, `distancia`, `reconocido`, `fecha_hora`. Se ordena del más
-reciente al más antiguo.
+`persona` (queda vacía si la persona se elimina, `SET_NULL`),
+`nombre_detectado`, `distancia`, `reconocido`, `fecha_hora`.
+
+## Cómo funciona el reconocimiento
+
+1. **Detección:** el fotograma se reduce a la mitad y se buscan rostros con el
+   modelo **HOG**.
+2. **Codificación:** cada rostro pasa por una red neuronal **pre-entrenada** de
+   dlib que lo convierte en un vector de 128 números (encoding).
+3. **Comparación:** se calcula la distancia con los encodings guardados.
+4. **Decisión:** si la menor distancia es **≤ 0.50**, es esa persona; si no,
+   "Desconocido". Las coordenadas se multiplican por 2 para volver a 640x480.
+
+No se entrena una red desde cero: se usa el modelo pre-entrenado y solo se
+extraen y comparan características. Por eso bastan de 5 a 10 fotos por persona.
 
 ## Permisos y grupos
 
@@ -107,53 +193,24 @@ reciente al más antiguo.
 **las cuentas nuevas no tienen permisos** hasta que un administrador las agregue
 a un grupo (en *Grupos > Editar*). Mientras tanto, el inicio muestra un aviso.
 
-## Instalación (Windows)
-
-Requisitos: **Python 3.11** y una cámara web.
+## Importar muchas fotos a la vez
 
 ```powershell
-cd proyecto_reconocimiento\django_app
-
-# 1. Entorno virtual
-python -m venv venv
-venv\Scripts\activate
-
-# 2. Dependencias. --no-deps es necesario: face_recognition pide "dlib" y pip
-#    intentaría compilarlo. En su lugar se usa dlib-bin (ya compilado).
-pip install --no-deps -r requirements.txt
-
-# 3. Base de datos
-python manage.py migrate
-
-# 4. Usuario administrador (queda como staff y superusuario)
-python manage.py createsuperuser
-
-# 5. Grupos Administrador y Vigilante
-python manage.py crear_grupos
-
-# 6. Fotos de entrenamiento: cada subcarpeta es una persona
-python manage.py importar_fotos "..\Isabella Ardila"
-
-# 7. Servidor
-python manage.py runserver
+python manage.py importar_fotos "C:\ruta\a\fotos"
 ```
-
-Abrir **http://localhost:8000** e iniciar sesión.
-
-### Sobre `importar_fotos`
 
 - Si la carpeta tiene subcarpetas (`fotos\Ana Ruiz\*.jpg`, `fotos\Juan Melo\*.jpg`),
   cada subcarpeta es una persona.
-- Si la carpeta tiene imágenes directamente (como `Isabella Ardila\`), la carpeta
-  misma es la persona.
-- Se le asigna un documento provisional `IMP-<nombre>`, que se puede corregir en
+- Si la carpeta tiene imágenes directamente, la carpeta misma es la persona.
+- Se asigna un documento provisional `IMP-<nombre>`, que se puede corregir en
   *Personas > Editar*.
 - Si se corre dos veces, no duplica las fotos.
-- Las fotos sin un rostro claro quedan marcadas como "Sin rostro válido" y no se
-  usan. Con las fotos de Isabella Ardila se procesan 6 de 10, igual que en el
-  `encodings.pkl` original.
+- Las fotos sin un rostro claro quedan marcadas como "Sin rostro válido".
 
-### La cámara solo funciona en localhost o HTTPS
+Las fotos de entrenamiento **no se incluyen en el repositorio** (son datos
+personales). Se guardan en `media/`, que está en `.gitignore`.
+
+## La cámara solo funciona en localhost o HTTPS
 
 Los navegadores solo permiten usar la cámara (`getUserMedia`) en un **contexto
 seguro**: `http://localhost`, `http://127.0.0.1` o un sitio con **HTTPS**. Si se
@@ -166,22 +223,21 @@ página muestra un aviso.
 python manage.py test
 ```
 
-Cubren la creación de modelos, la caché de encodings, los comandos, la
-redirección al login sin sesión, el 403 sin permiso (también en
-`api_reconocer`), el CRUD de personas, los filtros del historial y el contrato
-JSON de la API (con `servicios.reconocer` simulado). También verifican la regla
-de un registro cada 60 segundos.
+39 pruebas. Cubren la creación de modelos, la caché de encodings, los comandos,
+la redirección al login sin sesión, el 403 sin permiso (también en
+`api_reconocer`), el CRUD de personas, los filtros del historial, el contrato
+JSON de la API (con `servicios.reconocer` simulado), la protección CSRF y la
+regla de un registro cada 60 segundos.
 
 ## Notas técnicas
 
-- **Misma lógica que FastAPI:** el fotograma se reduce a la mitad, se detecta
-  con el modelo HOG, se compara con tolerancia 0.50 y las coordenadas del
-  recuadro se multiplican por 2 para volver al tamaño original (640x480).
 - **Caché de encodings:** se carga una vez desde la base de datos y se guarda en
   memoria. Se borra sola (señales `post_save` y `post_delete`) cuando se crea,
   edita o elimina una persona o una foto. Es por proceso: con `runserver` hay
   uno solo.
 - **CSRF:** `camara.js` lee la cookie `csrftoken` y la envía en el header
   `X-CSRFToken`.
-- **Saludo por voz:** lo hace el navegador (`speechSynthesis`), igual que en
-  React: como máximo una vez cada 10 segundos por persona.
+- **Saludo por voz:** lo hace el navegador (`speechSynthesis`), como máximo una
+  vez cada 10 segundos por persona.
+- **Un registro cada 60 s:** evita que una persona frente a la cámara genere
+  75 registros por minuto (uno cada 800 ms).
