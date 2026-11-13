@@ -322,7 +322,7 @@ def leer_fecha(texto):
 @permission_required('reconocimiento.view_registroacceso', raise_exception=True)
 def historial(request):
   '''
-  Tabla de accesos con filtros por GET (idea de HistoryPanel.tsx):
+  Tabla de accesos con filtros por GET:
   ?desde=AAAA-MM-DD&hasta=AAAA-MM-DD&persona=<id>&estado=reconocido|desconocido
   '''
   desde = request.GET.get('desde', '')

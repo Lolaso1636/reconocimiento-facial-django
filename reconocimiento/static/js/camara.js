@@ -1,13 +1,13 @@
 /*
- * Cámara en vivo: versión en JavaScript puro de los componentes de React
- *   - Camera.tsx      -> captura cada 800 ms, envía al servidor y saluda por voz
- *   - FaceOverlay.tsx -> dibuja los recuadros sobre el video (aquí en un canvas)
- *   - Sidebar.tsx     -> panel lateral con estado, conteo e historial
+ * Cámara en vivo en JavaScript puro:
+ *   - Captura: toma un fotograma cada 800 ms, envía al servidor y saluda por voz
+ *   - Recuadros: dibuja los recuadros sobre el video (aquí en un canvas)
+ *   - Panel: lateral con estado, conteo e historial
  */
 
-const INTERVALO_CAPTURA = 800;     // ms, igual que Camera.tsx
-const GREETING_COOLDOWN = 10000;   // ms, igual que Camera.tsx
-const MAX_HISTORIAL = 5;           // igual que Sidebar.tsx
+const INTERVALO_CAPTURA = 800;     // ms entre capturas
+const GREETING_COOLDOWN = 10000;   // ms mínimo entre saludos a la misma persona
+const MAX_HISTORIAL = 5;           // personas que se muestran en el panel
 
 const COLOR_RECONOCIDO = '#78c028';  // verde UCC
 const COLOR_DESCONOCIDO = '#dc2626'; // rojo
@@ -35,7 +35,7 @@ function getCookie(nombre) {
 }
 
 
-// ================= SALUDO POR VOZ (Camera.tsx) =================
+// ================= SALUDO POR VOZ =================
 function greet(name) {
   const now = Date.now();
   if (now - (lastGreet[name] ?? 0) < GREETING_COOLDOWN) return;
@@ -48,7 +48,7 @@ function greet(name) {
 }
 
 
-// ================= RECUADROS (FaceOverlay.tsx) =================
+// ================= RECUADROS =================
 function dibujarRecuadros(faces) {
   const ctx = canvasOverlay.getContext('2d');
   ctx.clearRect(0, 0, canvasOverlay.width, canvasOverlay.height);
@@ -76,7 +76,7 @@ function dibujarRecuadros(faces) {
 }
 
 
-// ================= PANEL LATERAL (Sidebar.tsx) =================
+// ================= PANEL LATERAL =================
 function actualizarPanel(faces) {
   document.getElementById('contador-rostros').textContent = faces.length;
   document.getElementById('personas-en-camara').textContent = faces.length;
@@ -90,7 +90,7 @@ function actualizarPanel(faces) {
     panel.classList.remove('hidden');
     document.getElementById('nombre-reconocido').textContent = recognized.name;
 
-    // Igual que Sidebar.tsx: no repetir nombres y guardar solo los últimos 5
+    // No repetir nombres y guardar solo los últimos 5
     if (!historial.find(p => p.name === recognized.name)) {
       const time = new Date().toLocaleTimeString('es-CO');
       historial = [{ name: recognized.name, time }, ...historial].slice(0, MAX_HISTORIAL);
@@ -149,7 +149,7 @@ function detener(texto) {
 }
 
 
-// ================= CAPTURA Y ENVÍO (Camera.tsx) =================
+// ================= CAPTURA Y ENVÍO =================
 async function captureFrame() {
   if (enProceso || video.readyState < 2) return;
   enProceso = true;

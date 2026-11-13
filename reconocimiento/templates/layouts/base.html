@@ -10,7 +10,7 @@
 </head>
 <body class="bg-grafito-50 text-grafito-800 font-sans min-h-screen flex flex-col antialiased">
 
-  {# ENCABEZADO: logo, nombre de la universidad y reloj (como App.tsx) #}
+  {# ENCABEZADO: logo, nombre de la universidad y reloj #}
   <header class="bg-white border-b-4 border-ucc-500">
     <div class="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between gap-4">
       <a href="{% url 'home' %}" class="flex items-center gap-4">
@@ -101,7 +101,7 @@
     {% endblock %}
   </main>
 
-  {# PIE DE PÁGINA (como App.tsx) #}
+  {# PIE DE PÁGINA #}
   <footer class="border-t border-grafito-200 bg-white">
     <div class="max-w-7xl mx-auto px-4 md:px-8 py-4 text-center text-sm text-grafito-500">
       &copy; {% now "Y" %} Universidad Cooperativa de Colombia
@@ -109,7 +109,7 @@
   </footer>
 
   <script>
-    // Reloj del encabezado (misma idea que el useEffect de App.tsx)
+    // Reloj del encabezado, se actualiza cada segundo
     function actualizarReloj() {
       const ahora = new Date();
       const hora = document.getElementById('reloj-hora');
